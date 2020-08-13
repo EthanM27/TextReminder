@@ -21,8 +21,8 @@ scope = [
     'https://www.googleapis.com/auth/drive'
 ]
 creds = ServiceAccountCredentials.from_json_keyfile_name('./client_secret.json', scope)
-client = gspread.authorize(creds)
-sheet = client.open("Education and Fitness Tracking").sheet1
+gspread_client = gspread.authorize(creds)
+sheet = gspread_client.open("Education and Fitness Tracking").sheet1
 
 #sending text messages
 
@@ -31,24 +31,27 @@ def send_message():
     workout_sent = False
     coding_sent = False
     while datetime.now().strftime('%H'):
-        hour = datetime.now().strftime('%H')
+        try:
+            hour = datetime.now().strftime('%H')
 
-        if hour == "10":
-            if not coding_sent:
-                coding_remind()
-                coding_sent = True
-        elif (hour == "17") or (hour == "19"):
-            if not workout_sent:
-                workout_remind()
-                workout_sent = True
-            
-        if hour == "11":
-            coding_sent = False
-        elif (hour == "18") or (hour == "20"):
-            workout_sent = False
-        
-        time.sleep(5)
-        print("loop executed at:", datetime.now())
+            if hour == "10":
+                if not coding_sent:
+                    coding_remind()
+                    coding_sent = True
+            elif (hour == "17") or (hour == "19"):
+                if not workout_sent:
+                    workout_remind()
+                    workout_sent = True
+                
+            if hour == "11":
+                coding_sent = False
+            elif (hour == "18") or (hour == "20"):
+                workout_sent = False
+        except Exception as e:
+            print(e)
+        finally:
+            time.sleep(5)
+            print("loop executed at:", datetime.now())
         
             
 def coding_remind():
