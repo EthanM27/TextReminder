@@ -14,6 +14,7 @@ text = file.readlines()
 myTwilioNumber = text[0].strip()
 ethanCell = text[1].strip()
 mathieuCell = text[2].strip()
+nikolaCell = text[3].strip()
 
 #google drive file setup
 scope = [
