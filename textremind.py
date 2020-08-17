@@ -1,12 +1,19 @@
 import os
 import time
+import shelve
 from datetime import datetime
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from twilio.rest import Client
 
-#twilio setup
-ethan_account = {'accountSID': os.environ['TWILIO_ACCOUNT_SID'], 'Auth Token': os.environ['TWILIO_AUTH_TOKEN']}
+'''
+Used for daily repeat updates (text or google sheets)
+
+Designed to run at the same time as spreadsheet.py
+'''
+# twilio setup
+ethan_account = {
+    'accountSID': os.environ['TWILIO_ACCOUNT_SID'], 'Auth Token': os.environ['TWILIO_AUTH_TOKEN']}
 client = Client(ethan_account['accountSID'], ethan_account['Auth Token'])
 
 file = open('phonenumbers', 'r')
@@ -16,25 +23,58 @@ ethanCell = text[1].strip()
 mathieuCell = text[2].strip()
 nikolaCell = text[3].strip()
 
-#google drive file setup
+# google drive file setup
 scope = [
     'https://www.googleapis.com/auth/spreadsheets',
     'https://www.googleapis.com/auth/drive'
 ]
-creds = ServiceAccountCredentials.from_json_keyfile_name('./client_secret.json', scope)
+creds = ServiceAccountCredentials.from_json_keyfile_name(
+    './client_secret.json', scope)
 gspread_client = gspread.authorize(creds)
 sheet = gspread_client.open("Education and Fitness Tracking").sheet1
 
-#sending text messages
-
-
+# try:
+#     s = shelve.open('daytrack')
+#     today_row = s['rowNum']
+# except KeyError:
+#     today_row = update_row()
+# finally:
+#     s.close()
+    
+# sending text messages
 def send_message():
+    global sheet
+    global today_row
     workout_sent = False
     coding_sent = False
+    today_updated = False
+    
     while datetime.now().strftime('%H'):
         try:
+            # TODO: dont send message if sheet is already filled in for the day.
             hour = datetime.now().strftime('%H')
+            
+            # fills in Day and Date for the row of the day if its 5:00am or todays row is not equal to
+            if (hour == "00" and not today_updated) or (today_row_blank()):
+                date = datetime.now().strftime('%m/%d/%Y')
+                day_name = datetime.now().strftime('%A')
+                row_num = update_todays_row()
 
+                s = shelve.open('daytrack')
+                coding_cells = sheet.range(row_num, s['COL_OFFSET_CODING'], row_num, s['COL_OFFSET_CODING'] + 1)
+                workout_cells = sheet.range(row_num, s['COL_OFFSET_EX'], row_num, s['COL_OFFSET_EX'] + 1)
+                coding_cells[0].value = day_name
+                workout_cells[0].value = day_name
+                coding_cells[1].value = date
+                workout_cells[1].value = date
+
+                sheet.update_cells(coding_cells, value_input_option='USER_ENTERED')
+                sheet.update_cells(workout_cells, value_input_option='USER_ENTERED')
+                today_updated = True
+                s.close()
+                print('Updated Todays Row')
+
+            # sends coding and workout messages based on time
             if hour == "10":
                 if not coding_sent:
                     coding_remind()
@@ -43,11 +83,13 @@ def send_message():
                 if not workout_sent:
                     workout_remind()
                     workout_sent = True
-                
-            if hour == "11":
+            
+            # reset tracking at end of the day
+            if hour == "23":
                 coding_sent = False
-            elif (hour == "18") or (hour == "20"):
                 workout_sent = False
+                today_updated = False
+
         except Exception as e:
             print(e)
         finally:
@@ -63,5 +105,31 @@ def workout_remind():
     mat_message = client.messages.create(body='Remember to workout today', from_=myTwilioNumber, to=mathieuCell)
     ethan_message = client.messages.create(body='Remember to workout today', from_=myTwilioNumber, to=ethanCell)
 
+def update_todays_row():
+    global sheet
+    # finds next empty row and returns that row
+    s = shelve.open('daytrack')
+
+    try:
+        rownum = sheet.find('', in_column=2).row
+        s['rowNum'] = rownum
+    finally:
+        s.close()
+    
+    return rownum
+
+def today_row_blank():
+    global sheet
+    s = shelve.open('daytrack')
+    blank = False
+    try:
+        if sheet.cell(s['rowNum'], 2).value == '':
+            blank = True
+    except KeyError:
+        s['rowNum'] = sheet.find('', in_column=2)
+        blank = True
+    finally:
+        s.close()
+        return blank
 if __name__ == "__main__":
     send_message()
