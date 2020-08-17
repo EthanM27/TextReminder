@@ -2,3 +2,5 @@
 client_secret.json
 virtualenvs/
 phonenumbers
+spreadsheet_testing.py
+testrand.py
