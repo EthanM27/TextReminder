@@ -22,6 +22,7 @@ myTwilioNumber = text[0].strip()
 ethanCell = text[1].strip()
 mathieuCell = text[2].strip()
 nikolaCell = text[3].strip()
+momCell = text[4].strip()
 
 # google drive file setup
 scope = [
@@ -48,11 +49,12 @@ def send_message():
     workout_sent = False
     coding_sent = False
     today_updated = False
-    
+    trash_sent = False
     while datetime.now().strftime('%H'):
         try:
             # TODO: dont send message if sheet is already filled in for the day.
             hour = datetime.now().strftime('%H')
+            day_name = datetime.now().strftime('%A')
             
             # fills in Day and Date for the row of the day if its 5:00am or todays row is not equal to
             if (hour == "00" and not today_updated) or (today_row_blank()):
@@ -74,6 +76,12 @@ def send_message():
                 s.close()
                 print('Updated Todays Row')
 
+            #remind mom to take out trash
+            if (hour == '18') and (day_name == 'Wednesday'):
+                if not trash_sent:
+                    trash_remind()
+                    trash_sent = True
+
             # sends coding and workout messages based on time
             if hour == "10":
                 if not coding_sent:
@@ -89,6 +97,7 @@ def send_message():
                 coding_sent = False
                 workout_sent = False
                 today_updated = False
+                trash_sent = False
 
         except Exception as e:
             print(e)
@@ -105,6 +114,9 @@ def workout_remind():
     mat_message = client.messages.create(body='Remember to workout today', from_=myTwilioNumber, to=mathieuCell)
     ethan_message = client.messages.create(body='Remember to workout today', from_=myTwilioNumber, to=ethanCell)
 
+def trash_remind():
+    mom_message = client.messages.create(body='Remember to take out the trash today', from_=myTwilioNumber, to=momCell)
+
 def update_todays_row():
     global sheet
     # finds next empty row and returns that row
@@ -119,6 +131,7 @@ def update_todays_row():
     return rownum
 
 def today_row_blank():
+    #TODO fix this to base it on the date string and not next empty cell
     global sheet
     s = shelve.open('daytrack')
     blank = False
