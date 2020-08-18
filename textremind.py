@@ -77,10 +77,15 @@ def send_message():
                 print('Updated Todays Row')
 
             #remind mom to take out trash
-            if (hour == '18') and (day_name == 'Wednesday'):
-                if not trash_sent:
-                    trash_remind()
-                    trash_sent = True
+            if (hour == '18'):
+                if day_name == 'Wednesday':
+                    if not trash_sent:
+                        trash_and_recycle_remind()
+                        trash_sent = True
+                elif day_name == 'Sunday':
+                    if not trash_sent:
+                        trash_remind()
+                        trash_sent = True
 
             # sends coding and workout messages based on time
             if hour == "10":
@@ -116,6 +121,9 @@ def workout_remind():
 
 def trash_remind():
     mom_message = client.messages.create(body='Remember to take out the trash today', from_=myTwilioNumber, to=momCell)
+
+def trash_and_recycle_remind():
+    mom_message = client.messages.create(body='Remember to take out the trash and recycling today', from_=myTwilioNumber, to=momCell)
 
 def update_todays_row():
     global sheet
