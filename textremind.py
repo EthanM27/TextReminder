@@ -43,6 +43,7 @@ def send_message():
     while datetime.now().strftime('%H'):
         try:
             # TODO: dont send message if sheet is already filled in for the day.
+            # TODO: Add options for every day/time combination
             date = datetime.now().strftime('%m/%d/%Y')
             hour = datetime.now().strftime('%H')
             day_name = datetime.now().strftime('%A')

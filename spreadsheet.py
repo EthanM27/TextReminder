@@ -50,6 +50,9 @@ def sms():
     message_body = request.form['Body']
     resp = MessagingResponse()
 
+    # TODO: add option to update previous dates through text.
+    # TODO: add status command to see who has worked out
+    # TODO: add progress command to see working out and coding trends for week/month
     #check for sender and message type to know which data to update
     if (sender == 'Ethan') or (sender == 'Mathieu'):
         if message_body.lower() == commands[0]:
