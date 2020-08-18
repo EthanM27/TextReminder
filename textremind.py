@@ -12,9 +12,7 @@ Used for daily repeat updates (text or google sheets)
 Designed to run at the same time as spreadsheet.py
 '''
 # twilio setup
-ethan_account = {
-    'accountSID': os.environ['TWILIO_ACCOUNT_SID'], 'Auth Token': os.environ['TWILIO_AUTH_TOKEN']}
-client = Client(ethan_account['accountSID'], ethan_account['Auth Token'])
+client = Client(os.environ['TWILIO_ACCOUNT_SID'], os.environ['TWILIO_AUTH_TOKEN'])
 
 file = open('phonenumbers', 'r')
 text = file.readlines()
@@ -34,14 +32,6 @@ creds = ServiceAccountCredentials.from_json_keyfile_name(
 gspread_client = gspread.authorize(creds)
 sheet = gspread_client.open("Education and Fitness Tracking").sheet1
 
-# try:
-#     s = shelve.open('daytrack')
-#     today_row = s['rowNum']
-# except KeyError:
-#     today_row = update_row()
-# finally:
-#     s.close()
-    
 # sending text messages
 def send_message():
     global sheet
@@ -53,16 +43,14 @@ def send_message():
     while datetime.now().strftime('%H'):
         try:
             # TODO: dont send message if sheet is already filled in for the day.
+            date = datetime.now().strftime('%m/%d/%Y')
             hour = datetime.now().strftime('%H')
             day_name = datetime.now().strftime('%A')
-            
-            # fills in Day and Date for the row of the day if its 5:00am or todays row is not equal to
-            if (hour == "00" and not today_updated) or (today_row_blank()):
-                date = datetime.now().strftime('%m/%d/%Y')
-                day_name = datetime.now().strftime('%A')
-                row_num = update_todays_row()
-
+            # fills in Day and Date for the row of the day if its 12:00am or todays row is non existent
+            if today_row_blank(date) or (hour == "00" and not today_updated):
                 s = shelve.open('daytrack')
+
+                row_num = s['rowNum']
                 coding_cells = sheet.range(row_num, s['COL_OFFSET_CODING'], row_num, s['COL_OFFSET_CODING'] + 1)
                 workout_cells = sheet.range(row_num, s['COL_OFFSET_EX'], row_num, s['COL_OFFSET_EX'] + 1)
                 coding_cells[0].value = day_name
@@ -76,7 +64,7 @@ def send_message():
                 s.close()
                 print('Updated Todays Row')
 
-            #remind mom to take out trash
+            # remind mom to take out trash
             if (hour == '18'):
                 if day_name == 'Wednesday':
                     if not trash_sent:
@@ -108,7 +96,7 @@ def send_message():
             print(e)
         finally:
             time.sleep(5)
-            print("loop executed at:", datetime.now())
+            print("loop completed at:", datetime.now())
         
             
 def coding_remind():
@@ -125,32 +113,23 @@ def trash_remind():
 def trash_and_recycle_remind():
     mom_message = client.messages.create(body='Remember to take out the trash and recycling today', from_=myTwilioNumber, to=momCell)
 
-def update_todays_row():
-    global sheet
-    # finds next empty row and returns that row
-    s = shelve.open('daytrack')
-
-    try:
-        rownum = sheet.find('', in_column=2).row
-        s['rowNum'] = rownum
-    finally:
-        s.close()
-    
-    return rownum
-
-def today_row_blank():
-    #TODO fix this to base it on the date string and not next empty cell
+def today_row_blank(date):
     global sheet
     s = shelve.open('daytrack')
     blank = False
     try:
-        if sheet.cell(s['rowNum'], 2).value == '':
-            blank = True
-    except KeyError:
-        s['rowNum'] = sheet.find('', in_column=2)
+        # if todays date cell is found, blank = false.
+        cell = sheet.find(str(date), in_column=3)
+        if cell:
+            blank = False
+            s['rowNum'] = cell.row
+    except (KeyError, gspread.exceptions.CellNotFound) as e:
+        # what to do if rowNum key is not in daytrack shelve file or if todays cell is not found.
+        s['rowNum'] = sheet.find('', in_column=3).row
         blank = True
     finally:
         s.close()
         return blank
+
 if __name__ == "__main__":
     send_message()
